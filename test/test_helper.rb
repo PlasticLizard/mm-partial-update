@@ -29,7 +29,8 @@ class Test::Unit::TestCase
   end
 
   def EDoc(name='Class', &block)
-    klass = Class.new do
+    klass = Class.new
+    klass.class_eval do
       include MongoMapper::EmbeddedDocument
 
       if name

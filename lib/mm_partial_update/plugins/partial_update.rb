@@ -10,15 +10,15 @@ module MmPartialUpdate
       def self.configure(model)
         model.plugin MmDirtier::Plugins::Dirtier unless
           model.plugins.include?(MmDirtier::Plugins::Dirtier)
+
+        model.plugin MmPartialUpdate::Plugins::PersistenceModel unless
+          model.plugins.include?(MmPartialUpdate::Plugins::PersistenceModel)
       end
 
       module InstanceMethods
 
-        protected
-
-        private
-       
       end
+
     end
   end
 end
