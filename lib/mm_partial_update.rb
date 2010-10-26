@@ -9,6 +9,7 @@ base_dir = File.dirname(__FILE__)
  'embedded_collection',
  'one_embedded_proxy',
  'extensions',
+ 'update_command',
  'plugins/persistence_model',
  'plugins/partial_update'
 ].each {|req| require File.join(base_dir,'mm_partial_update',req)}
