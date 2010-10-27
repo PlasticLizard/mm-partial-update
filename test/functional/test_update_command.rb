@@ -100,7 +100,7 @@ class TestUpdateCommand < Test::Unit::TestCase
         end
 
         should "update objects in arrays" do
-          @person.pets.build(:name=>"Magma")
+          @person.pets.build :name=>"Magma"
           @person.save!
           @command.set "pets.0", {:name=>"Timmy"}
           @command.execute
@@ -108,9 +108,75 @@ class TestUpdateCommand < Test::Unit::TestCase
           @person.pets[0].name.should == "Timmy"
         end
 
+        should "update objects in deep arrays" do
+          pet = @person.pets.build :name=>"Magma"
+          flea = pet.fleas.build :name=>"Fleatus"
+          @person.save!
+          @command.set "pets.0.fleas.0", :name=>"Fleatasia"
+          @command.execute
+          @person.reload
+          @person.pets[0].fleas[0].name.should == "Fleatasia"
+        end
 
       end
 
+      context "#unset" do
+        should "remove a specified key" do
+          @person.name = "I am the walrus"
+          @person.save!
+          @command.unset "name"
+          @command.execute
+          #reload doesn't work here, because of MM implementation
+          #which will not apply values to fields
+          #that don't appear in the result set
+          person = Person.find(@person.id)
+          person.name.should be_nil
+        end
+      end
+
+      context "#push" do
+        should "add objects to arrays" do
+          @command.push "pets", :name=>"Magma", :age=>2
+          @command.execute
+          @person.reload
+          @person.pets.count.should == 1
+          @person.pets[0].name.should == "Magma"
+          @person.pets[0].age.should == 2
+        end
+
+        should "append objects to arrays" do
+          @person.pets.build :name=>"Magma"
+          @person.save!
+          @command.push "pets", :name=>"Timmy"
+          @command.execute
+          @person.reload
+          @person.pets.count.should == 2
+          @person.pets[1].name.should == "Timmy"
+        end
+
+        should "add objects to deep arrays" do
+          @person.pets.build :name=>"Magma"
+          @person.save!
+          @command.push "pets.0.fleas", :name=>"Fleatus"
+          @command.execute
+          @person.reload
+          @person.pets[0].fleas.count.should == 1
+          @person.pets[0].fleas[0].name.should == "Fleatus"
+        end
+
+      end
+
+      context "#pull" do
+        should "remove objects from arrays" do
+          pet = @person.pets.build :name=>"Magma"
+          @person.save!
+          @command.pull "pets", pet.id
+          @command.execute
+          #@person.reload
+          @person.pets.count.should == 0
+        end
+
+      end
 
     end
 
