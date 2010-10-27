@@ -170,9 +170,9 @@ class TestUpdateCommand < Test::Unit::TestCase
         should "remove objects from arrays" do
           pet = @person.pets.build :name=>"Magma"
           @person.save!
-          @command.pull "pets", pet.id
+          @command.pull "pets", pet._id
           @command.execute
-          #@person.reload
+          @person.reload
           @person.pets.count.should == 0
         end
 

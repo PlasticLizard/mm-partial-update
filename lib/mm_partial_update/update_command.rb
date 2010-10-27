@@ -44,7 +44,8 @@ module MmPartialUpdate
     def pull(selector, document_id)
       raise "'pull' requires a non-blank selector" if selector.blank?
       selector = selector.to_s
-      (commands["$pullAll"][selector] ||= []) << {"$elemMatch"=>{:_id=>document_id}}
+      commands["$pull"][selector] ||= {"_id"=>{"$in"=>[]}}
+      commands["$pull"][selector]["_id"]["$in"] << document_id
     end
 
     def merge(other_command)
