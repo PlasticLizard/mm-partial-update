@@ -38,14 +38,16 @@ module MmPartialUpdate
     def push(selector, document)
       raise "'push' requires a non-blank selector" if selector.blank?
       selector = selector.to_s
-      (commands["$pushAll"][selector] ||= []) << document
+      (commands[:pushes][selector] ||= []) << document
+      #(commands["$pushAll"][selector] ||= []) << document
     end
 
     def pull(selector, document_id)
       raise "'pull' requires a non-blank selector" if selector.blank?
       selector = selector.to_s
-      commands["$pull"][selector] ||= {"_id"=>{"$in"=>[]}}
-      commands["$pull"][selector]["_id"]["$in"] << document_id
+      (commands[:pulls][selector] ||= []) << document_id
+      #commands["$pull"][selector] ||= {"_id"=>{"$in"=>[]}}
+      #commands["$pull"][selector]["_id"]["$in"] << document_id
     end
 
     def merge(other_command)
@@ -60,15 +62,56 @@ module MmPartialUpdate
       commands.blank?
     end
 
-    def execute(options={})
-      selector = document_selector.tap {|s|s.merge!("$atomic"=>true) if options[:atomic]}
+    def reset
+      commands.clear
+    end
 
-      #if there are no commands, there is nothing to do...
+    def execute(options={})
+       #if there are no commands, there is nothing to do...
       return if empty?
 
-      #puts "#{root_document.class.name}.collection.update(#{selector.inspect}, #{commands.inspect}, :multi=>false, :upsert=>#{options[:upsert]}, :safe=>#{options[:safe]})"
-      root_document.collection.update(selector, commands, :multi=>false,
-                                      :upsert=>true, :safe=>options[:safe])
+      selector = document_selector.tap {|s|s.merge!("$atomic"=>true) if options[:atomic]}
+
+      dbcommands = prepare_mongodb_commands
+
+      dbcommands.each do |command|
+        root_document.collection.update(selector, command, :multi=>false,
+                                        :upsert=>true, :safe=>options[:safe])
+      end
     end
+
+    private
+
+    def prepare_mongodb_commands
+      dbcommands = []
+
+      initial_command = commands.dup
+      pushes, pulls = initial_command.delete(:pushes), initial_command.delete(:pulls)
+
+      #next_op = pulls.blank? ? next_push(pushes) : next_pull(pulls)
+      #initial_command.merge! next_op if next_op
+
+      dbcommands << initial_command unless initial_command.blank?
+
+      while (next_op = next_pull(pulls)); dbcommands << next_op; end
+      while (next_op = next_push(pushes)); dbcommands << next_op; end
+
+      dbcommands
+    end
+
+    def next_push(pushes)
+      return nil if pushes.blank?
+      selector = pushes.keys[0]
+      docs = pushes.delete(selector)
+      {"$pushAll" => { selector => docs } }
+    end
+
+    def next_pull(pulls)
+      return nil if pulls.blank?
+      selector = pulls.keys[0]
+      doc_ids = pulls.delete(selector)
+      {"$pull" => { selector => { "_id" => { "$in" => doc_ids } } } }
+    end
+
   end
 end

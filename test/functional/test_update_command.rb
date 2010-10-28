@@ -164,6 +164,17 @@ class TestUpdateCommand < Test::Unit::TestCase
           @person.pets[0].fleas[0].name.should == "Fleatus"
         end
 
+        should "add multiple objects to an array" do
+          @command.push "pets", :name=>"Magma"
+          @command.push "pets", :name=>"Timmy"
+          @command.execute
+          @person.reload
+          @person.pets.count.should == 2
+          @person.pets[0].name.should == "Magma"
+          @person.pets[1].name.should == "Timmy"
+        end
+
+
       end
 
       context "#pull" do
@@ -176,6 +187,70 @@ class TestUpdateCommand < Test::Unit::TestCase
           @person.pets.count.should == 0
         end
 
+        should "remove objects from deep arrays" do
+          pet = @person.pets.build :name=>"Magma"
+          flea = pet.fleas.build :name=>"Fleatus"
+          @person.save!
+          @command.pull "pets.0.fleas", flea.id
+          @command.execute
+          @person.reload
+          @person.pets[0].fleas.count.should == 0
+        end
+
+        should "remove multiple objects from arrays" do
+          @person.pets.build :name=>"Magma"
+          @person.pets.build :name=>"Timmy"
+          @person.pets.build :name=>"Debris"
+          @person.save!
+          @command.pull "pets", @person.pets[0].id
+          @command.pull "pets", @person.pets[2].id
+
+          undeleted = @person.pets[1].id
+
+          @command.execute
+          @person.reload
+          @person.pets.count.should == 1
+          @person.pets[0].id.should == undeleted
+        end
+
+      end
+
+      context "with a variety of commands" do
+        should "correctly persist the document" do
+          @person.name = "Nathan"
+          @person.pets.build :name=>"Magma"
+          @person.pets.build :name=>"Timmy", :age=>3
+          @person.favorite_pet.build :name=>"Debris", :age=>1
+          @person.pets[0].favorite_flea.build :name=>"Fleatus"
+          @person.pets[1].fleas.build :name=>"Fleatasia"
+          @person.save!
+
+          @command.set nil, :name=>"Willard"
+          @command.push "pets", :name=>"Dogen", :age=>2
+          @command.pull "pets", @person.pets[1].id
+          @command.set "pets.0", :age => 99
+          @command.set "pets.0.favorite_flea", :name=>"Fleasy"
+          @command.set "pets.1.favorite_flea", {:_id=>BSON::ObjectId.new, :name=>"Rinzai"}, :replace=>true
+          @command.push "pets.0.fleas", :_id=>BSON::ObjectId.new, :name=>"Soto"
+          @command.push "pets.0.fleas", :_id=>BSON::ObjectId.new, :name=>"Basho"
+
+          @command.execute
+          @person.reload
+
+          @person.name.should == "Willard"
+          @person.pets.count.should == 2
+          @person.pets[0].name.should == "Magma"
+          @person.pets[1].name.should == "Dogen"
+          @person.pets[1].age.should == 2
+          @person.pets[0].age.should == 99
+          @person.favorite_pet.name.should == "Debris"
+          @person.pets[1].favorite_flea.should be_nil
+          @person.pets[1].fleas.count.should == 0
+          @person.pets[0].fleas.count.should == 2
+          @person.pets[0].fleas[0].name.should == "Soto"
+          @person.pets[0].fleas[1].name.should == "Basho"
+
+        end
       end
 
     end
