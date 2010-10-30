@@ -62,33 +62,38 @@ class TestUpdateCommand < Test::Unit::TestCase
         @command.unset "a_field"
         @command.to_h["$unset"].should == {"a_field"=>true}
       end
+
+      should "nullify a field when :nullify=>true" do
+        @command.unset "a_field", :nullify=>true
+        @command.to_h["$set"].should == @defaults.merge("a_field"=>nil)
+      end
+
     end
 
     context "#push" do
       should "add the field hash to the $pushAll array for the selector" do
         @command.push "a_collection", {"a"=>:b, "c"=>:d}
-        @command.to_h["$pushAll"].should == {"a_collection" => [{"a"=>:b, "c"=>:d}]}
+        @command.to_h[:pushes].should == {"a_collection" => [{"a"=>:b, "c"=>:d}]}
       end
 
       should "append the field hash to the$pushAll array for the selector" do
         @command.push "a_collection", {"a"=>:b, "c"=>:d}
         @command.push "a_collection", {"a"=>:e, "f"=>:g}
-        @command.to_h["$pushAll"].should == {"a_collection" => [{"a"=>:b, "c"=>:d},
+        @command.to_h[:pushes].should == {"a_collection" => [{"a"=>:b, "c"=>:d},
                                                                 {"a"=>:e, "f"=>:g}]}
         end
     end
 
     context "#pull" do
-      should "add an $elemMatch for the document id to the $pullAll array for the selector" do
+      should "add the document id to the $pull array for the selector" do
         @command.pull "a_collection", "123"
-        @command.to_h["$pullAll"].should == {"a_collection" => [{"$elemMatch"=>{:_id=>"123"}}]}
+        @command.to_h[:pulls].should == {"a_collection" => ["123"]}
       end
 
-      should "append an $elemMatch for the doc id to the $pullAll array for the selector" do
+      should "append the doc id to the $pull array for the selector" do
         @command.pull "a_collection", "123"
         @command.pull "a_collection", "456"
-        @command.to_h["$pullAll"].should == {"a_collection" => [{"$elemMatch"=>{:_id=>"123"}},
-                                                                {"$elemMatch"=>{:_id=>"456"}}]}
+        @command.to_h[:pulls].should == {"a_collection" => ["123","456"]}
       end
     end
 
@@ -102,6 +107,26 @@ class TestUpdateCommand < Test::Unit::TestCase
         @command.merge(another).should == @command.to_h.merge(another.to_h)
       end
     end
+
+    context "#prepare_mongodb_commands" do
+      should "separate operations into sets, pulls and pushes" do
+        @command.set "a", {:b=>2}
+        @command.set "a.c", {"c"=>"d"}
+        @command.push "hi", {:ho=>true}
+        @command.push "hi", {:snack=>"yummy"}
+        @command.push "ho", {:cheeri=>0}
+        @command.pull "zig", "zag"
+        db_commands = @command.send(:prepare_mongodb_commands)
+        db_commands.length.should == 4
+
+        db_commands[0].should == {"$set"=>{"a.b"=>2, "a.c.c"=>"d"}.merge(@defaults)}
+        db_commands[1].should == {"$pull"=>{"zig"=>{"_id"=>{"$in"=>["zag"]}}}}
+        db_commands[2].should == {"$pushAll"=>{"hi"=>[{:ho=>true},{:snack=>"yummy"}]}}
+        db_commands[3].should == {"$pushAll"=>{"ho"=>[{:cheeri=>0}]}}
+      end
+
+    end
+
 
   end
 end

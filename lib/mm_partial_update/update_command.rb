@@ -13,6 +13,9 @@ module MmPartialUpdate
     end
 
     def set(selector, fields, options={})
+
+      return if fields.blank?
+
       selector = selector.to_s if selector
 
       if selector.blank? && options[:replace]
@@ -29,25 +32,22 @@ module MmPartialUpdate
       end
     end
 
-    def unset(selector)
+    def unset(selector, options={})
       raise "'unset' requires a non-blank selector" if selector.blank?
       selector = selector.to_s
-      commands["$unset"][selector] = true
+      options[:nullify] ? commands["$set"][selector] = nil : commands["$unset"][selector] = true
     end
 
     def push(selector, document)
       raise "'push' requires a non-blank selector" if selector.blank?
       selector = selector.to_s
       (commands[:pushes][selector] ||= []) << document
-      #(commands["$pushAll"][selector] ||= []) << document
     end
 
     def pull(selector, document_id)
       raise "'pull' requires a non-blank selector" if selector.blank?
       selector = selector.to_s
       (commands[:pulls][selector] ||= []) << document_id
-      #commands["$pull"][selector] ||= {"_id"=>{"$in"=>[]}}
-      #commands["$pull"][selector]["_id"]["$in"] << document_id
     end
 
     def merge(other_command)
@@ -87,9 +87,6 @@ module MmPartialUpdate
 
       initial_command = commands.dup
       pushes, pulls = initial_command.delete(:pushes), initial_command.delete(:pulls)
-
-      #next_op = pulls.blank? ? next_push(pushes) : next_pull(pulls)
-      #initial_command.merge! next_op if next_op
 
       dbcommands << initial_command unless initial_command.blank?
 
