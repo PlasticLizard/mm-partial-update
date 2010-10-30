@@ -11,12 +11,26 @@ module MmPartialUpdate
 
       module InstanceMethods
 
-        def save_changes
+        def save_changes(options={})
           #We can't update an embedded document if the root isn't saved
-          return _root_document.save_to_collection if _root_document.new?
+          #The clear_changes call is added here because dirty
+          #tracking happens further up the call chain than save_to_collection
+          #under normal circumstances, so we have to inject it
+          return _root_document.save_to_collection.tap {clear_changes} if
+            _root_document.new?
 
+          #persist changes to self and descendents
           update_command  = prepare_update_command
           update_command.execute()
+
+          #clear dirty tracking
+          @_new = false
+          clear_changes
+          associations.each do |_, association|
+            proxy = get_proxy(association)
+            proxy.save_to_collection(options) if
+              proxy.proxy_respond_to?(:save_to_collection)
+          end
         end
 
         def prepare_update_command
