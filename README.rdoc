@@ -37,9 +37,23 @@ mm-partial-update does not, by default, change MongoMappers normal mode of opera
      person.name = "Poe"
      person.save_changes #only saves the changed fields (in this case name=>"Poe"
 
+You can also persist only a part of a document:
+
+     person = Person.create! :name=>"Willard"
+     person.name = "Benji"
+     pet = person.pets.build :name=>"Magma"
+     
+     person.changed? #= > true
+     pet.changed? # => true
+
+     pet.save_changes
+     
+     pet.changed? # => false
+     person.changed? # => true
+
 In addition to #save_changes, partial saves can be enabled globally:
 
-     MmPartialUpdate.persistence_strategy = :changes_only
+     MmPartialUpdate.default_persistence_strategy = :changes_only
 
 Or on a model by model basis:
 
