@@ -1,4 +1,5 @@
-# encoding: UTF-8
+require "mongo_mapper/exceptions.rb"
+
 module MmPartialUpdate
   module Plugins
     module PartialUpdate
@@ -27,25 +28,21 @@ module MmPartialUpdate
       module InstanceMethods
 
         def save_changes(options={})
-          #We can't update an embedded document if the root isn't saved
-          #The clear_changes call is added here because dirty
-          #tracking happens further up the call chain than save_to_collection
-          #under normal circumstances, so we have to inject it
-          return _root_document.save_to_collection(options).tap {clear_changes} if
-            _root_document.new?
+          options.assert_valid_keys(:validate, :callbacks, :safe, :changes_only)
+          options.reverse_merge!(:validate=>true, :callbacks=>true)
+          !options[:validate] || valid? ? create_or_update_changes(options) : false
+        end
 
-          #persist changes to self and descendents
+        def save_changes!(options={})
+          options.assert_valid_keys(:callbacks, :safe, :changes_only)
+          save_changes(options) || raise(MongoMapper::DocumentNotValid.new(self))
+        end
+
+        def create_or_update_changes(options={})
+          #assert_root_saved
           update_command  = prepare_update_command
-          update_command.execute()
-
-          #clear dirty tracking
-          @_new = false
-          clear_changes
-          associations.each do |_, association|
-            proxy = get_proxy(association)
-            proxy.save_to_collection(options) if
-              proxy.proxy_respond_to?(:save_to_collection)
-          end
+          execute_command(update_command, options)
+          clear_changes_to_subtree(options)
         end
 
         def prepare_update_command
@@ -84,6 +81,29 @@ module MmPartialUpdate
           proxy = super(association)
           proxy.make_persistable if proxy.can_be_persistable?
           proxy
+        end
+
+        def clear_changes_to_subtree(options)
+          @_new = false
+          clear_changes
+          associations.each do |_, association|
+            proxy = get_proxy(association)
+            proxy.save_to_collection(options) if
+              proxy.proxy_respond_to?(:save_to_collection)
+          end
+        end
+
+        def execute_command(update_command,options)
+           if options[:callbacks]
+             context = new? ? :create : :update
+             run_callbacks(:save) do
+              run_callbacks(context) do
+                update_command.execute()
+              end
+            end
+          else
+            update_command.execute()
+           end
         end
 
       end

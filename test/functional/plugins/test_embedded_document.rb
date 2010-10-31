@@ -1,6 +1,7 @@
 require 'test_helper'
 require "models"
 
+
 class TestEmbeddedDocumentPlugin < Test::Unit::TestCase
 
   context "#database_selector" do
@@ -73,15 +74,10 @@ class TestEmbeddedDocumentPlugin < Test::Unit::TestCase
 
   context "#save_changes" do
 
-    should "save an unsaved parent when a descendent is saved" do
+    should "fails when a descendent is saved with an unsaved root" do
       person = Person.new :name=>"Willard"
       pet = person.pets.build :name=>"Magma"
-      pet.save_changes
-      person = Person.find(person.id)
-      person.should_not be_nil
-      person.name.should == "Willard"
-      person.pets.count.should == 1
-      person.pets[0].name.should == "Magma"
+      assert_raises(RuntimeError) { pet.save_changes }
     end
 
     should "create an embedded document that doesn't already exist" do

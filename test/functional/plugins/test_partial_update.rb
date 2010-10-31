@@ -91,11 +91,73 @@ class TestPartialUpdate < Test::Unit::TestCase
       end
     end
 
-    #context "when called on embedded documents" do
-    #  should "save a new embedded document" do
-    #    person = Person.create! :name=>"Willard"
-    #  end
-    #end
+  end
+
+  context "#save_changes!" do
+
+    should "raise an exception if the document isn't valid" do
+      person = ValidatedPerson.new
+      assert_raise(MongoMapper::DocumentNotValid) { person.save_changes! }
+    end
+
+    should "not raise an exception if the document is valid" do
+      person = ValidatedPerson.new :name=>"Willard"
+      assert_nothing_thrown { person.save_changes! }
+    end
+
+    should "raise an exception when saving an embedded document that isn't valid" do
+      person = ValidatedPerson.create! :name=>"Willard"
+      pet = person.validated_pets.build
+      assert_raise(MongoMapper::DocumentNotValid) {pet.save_changes!}
+    end
+
+    should "raise an exception when saving an embedded 'one' document that isn't valid" do
+      person = ValidatedPerson.create! :name=>"Willard"
+      pet = person.validated_pet.build
+      assert_raise(MongoMapper::DocumentNotValid) {pet.save_changes!}
+    end
 
   end
+
+  context "callbacks" do
+
+    should "happen for new top level documents" do
+      p = Person.new :name=>"Willard"
+      p.clear_history
+      p.save_changes
+      p.history.should == [:before_validation, :after_validation,
+                           :before_save, :before_create, :after_create, :after_save]
+    end
+
+    should "happen for updated top level documents" do
+      p = Person.create :name=>"Willard"
+      p.clear_history
+      p.name = "Timmy"
+      p.save_changes
+      p.history.should == [:before_validation, :after_validation,
+                           :before_save, :before_update, :after_update, :after_save]
+    end
+
+    should "happen for new embedded documents" do
+      p = Person.create :name=>"Willard"
+      pet = p.pets.build :name=>"Magma"
+      pet.clear_history
+      pet.save_changes
+      pet.history.should == [:before_validation, :after_validation,
+                             :before_save, :before_create, :after_create, :after_save]
+    end
+
+    should "happen for updated embedded documents" do
+      p = Person.new :name=>"Willard"
+      pet = p.pets.build :name=>"Magma"
+      p.save!
+      pet.clear_history
+      pet.name = "Debris"
+      pet.save_changes
+      pet.history.should == [:before_validation, :after_validation,
+                             :before_save, :before_update, :after_update, :after_save]
+    end
+
+  end
+
 end

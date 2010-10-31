@@ -10,11 +10,15 @@ module MmPartialUpdate
 
         module InstanceMethods
 
+          def create_or_update_changes(options={})
+            new? ? save(:validate=>false, :safe=>options[:safe]) : super
+          end
+
           def save_to_collection(options={})
             strategy = determine_persistence_strategy(options)
             return super if new? || strategy == :full_document
 
-            save_changes(options)
+            save_changes(options.merge(:validate=>false, :callbacks=>false))
           end
 
           private

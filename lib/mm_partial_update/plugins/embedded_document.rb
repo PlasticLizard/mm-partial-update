@@ -10,6 +10,11 @@ module MmPartialUpdate
 
         module InstanceMethods
 
+          def create_or_update_changes(options={})
+            assert_root_saved
+            super
+          end
+
           def database_selector
             selector = @_association_name.to_s
             selector = "#{_parent_document.database_selector}.#{selector}" if
@@ -32,6 +37,10 @@ module MmPartialUpdate
                 command.set(selector, self.to_mongo, :replace=>true)
               end
             end
+          end
+
+          def assert_root_saved
+            raise "You are attempting to save changes to an embedded document, but the root document has not yet been saved. You must save changes to the root document before you can call save_changes any of its embedded documents" if _root_document.new?
           end
 
         end
