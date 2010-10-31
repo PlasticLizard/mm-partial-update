@@ -26,6 +26,6 @@ task :release => :build do
   sh "git tag v#{MmPartialUpdate::Version}"
   sh "git push origin master"
   sh "git push origin v#{MmPartialUpdate::Version}"
-  sh "gem push mm_dirtier-#{MmPartialUpdate::Version}.gem"
+  sh "gem push mm_partial_update-#{MmPartialUpdate::Version}.gem"
 end
 
