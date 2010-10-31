@@ -41,21 +41,25 @@ Both methods behave identically to their native MongoMapper counterparts with re
      person.name = "Poe"
      person.save_changes! #only saves the changed fields (in this case name=>"Poe"
 
+<<<<<<< HEAD
+In addition to #save_changes(!), partial saves can be enabled globally:
+=======
 You can also persist only a part of a document:
 
      person = Person.create! :name=>"Willard"
      person.name = "Benji"
      pet = person.pets.build :name=>"Magma"
-
+     
      person.changed? #= > true
      pet.changed? # => true
 
      pet.save_changes
-
+     
      pet.changed? # => false
      person.changed? # => true
 
-In addition to #save_changes(!), partial saves can be enabled globally:
+In addition to #save_changes, partial saves can be enabled globally:
+>>>>>>> ba124d377fbb1da01f1420e931f776b3c5b61922
 
      MmPartialUpdate.default_persistence_strategy = :changes_only
 
