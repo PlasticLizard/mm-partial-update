@@ -35,5 +35,12 @@ module MmPartialUpdate
       end if @target
     end
 
+    #def assign_references(*args)
+    #  super(*args).tap do |child|
+    #    child.instance_variable_set("@_proxy",self)
+    #  end
+    #end
+
+
   end
 end

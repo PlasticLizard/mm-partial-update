@@ -6,7 +6,22 @@ module MmPartialUpdate
       def self.included(model)
         model.plugin MmDirtier::Plugins::Dirtier unless
           model.plugins.include?(MmDirtier::Plugins::Dirtier)
-        model.plugin MmPartialUpdate::Plugins::PartialUpdate
+        model.plugin(MmPartialUpdate::Plugins::PartialUpdate)
+      end
+
+      module ClassMethods
+
+        def inherited(descendant)
+          descendant.instance_variable_set("@_persistence_strategy",
+                                           self.persistence_strategy)
+          super
+        end
+
+        def persistence_strategy(new_strategy=nil)
+          return @_persistence_strategy ||= nil unless new_strategy
+          @_persistence_strategy = new_strategy
+        end
+
       end
 
       module InstanceMethods
@@ -16,7 +31,7 @@ module MmPartialUpdate
           #The clear_changes call is added here because dirty
           #tracking happens further up the call chain than save_to_collection
           #under normal circumstances, so we have to inject it
-          return _root_document.save_to_collection.tap {clear_changes} if
+          return _root_document.save_to_collection(options).tap {clear_changes} if
             _root_document.new?
 
           #persist changes to self and descendents
@@ -34,7 +49,7 @@ module MmPartialUpdate
         end
 
         def prepare_update_command
-           UpdateCommand.new(self).tap { |command| add_updates_to_command nil, command }
+          UpdateCommand.new(self).tap { |command| add_updates_to_command nil, command }
         end
 
         def add_updates_to_command(parent_selector, command)
