@@ -49,22 +49,21 @@ module MmPartialUpdate
         end
 
         def prepare_update_command
-          UpdateCommand.new(self).tap { |command| add_updates_to_command nil, command }
+          UpdateCommand.new(self).tap { |command| add_updates_to_command(command) }
         end
 
-        def add_updates_to_command(parent_selector, command)
+        def add_updates_to_command(command)
 
-          selector = defined?(@_database_position) ?
-          "#{parent_selector}.#{@_database_position}" : parent_selector
+          selector = respond_to?(:database_selector) ? database_selector : nil
 
-          return command.tap {|c|c.set(selector, self.to_mongo, :replace=>true)} if new?
+          add_create_self_to_command(selector, command) and return if new?
 
           field_changes = changes
 
           associations.values.each do |association|
             proxy = get_proxy(association)
             association_changes = field_changes.delete(association.name)
-            proxy.add_updates_to_command(selector, association_changes, command) if
+            proxy.add_updates_to_command(association_changes, command) if
               proxy.respond_to?(:add_updates_to_command)
           end
 
@@ -76,6 +75,10 @@ module MmPartialUpdate
         end
 
         private
+
+        def add_create_self_to_command(selector, command)
+          command.tap { |c| c.set(selector, self.to_mongo, :replace=>true)}
+        end
 
         def get_proxy(association)
           proxy = super(association)
