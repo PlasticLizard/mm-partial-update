@@ -1,0 +1,6 @@
+==0.1.1
+  *Added #save_changes! method to mirror #save and #save!
+  *Added validation and callback support to match #save and #save! when #save_changes(!) is called directly
+
+==0.1.0
+  *Initial release

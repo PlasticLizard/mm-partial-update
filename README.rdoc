@@ -14,7 +14,11 @@ To activate the plugin, add 'mm_partial_update' to your gemfile
 
 == Usage
 
-mm-partial-update does not, by default, change MongoMappers normal mode of operation. Although mm-partial-update can be configured, either at a global level or on a model by model basis, to use a partial update strategy for all persistence operations, out of the box it simply adds a "save_changes" method to both MongoMapper::Document and MongoMapper::EmbeddedDocument. save_changes will persist any changes to the target document using MongoDB's atomic operators, ideal for making small changes to large documents or for concurrent modification of documents by multiple processes.
+mm-partial-update does not, by default, change MongoMappers normal mode of operation. Although mm-partial-update can be configured, either at a global level or on a model by model basis, to use a partial update strategy for all persistence operations, out of the box it simply adds #save_changes and #save_changes! methods to both MongoMapper::Document and MongoMapper::EmbeddedDocument. #save_changes(!) will persist any changes to the target document using MongoDB's atomic operators, ideal for making small changes to large documents or for concurrent modification of documents by multiple processes.
+
+As you might expect, #save_changes and #save_changes! mirror the behavior of #save and #save!, in that #save_changes will return false if the document (or embedded document) having its changes saved fails validation, whereas #save_changes! will raise a MongoMapper::InvalidDocument error.
+
+Both methods behave identically to their native MongoMapper counterparts with respect to both validations and callbacks.
 
 === For example:
 
@@ -35,9 +39,9 @@ mm-partial-update does not, by default, change MongoMappers normal mode of opera
 
      person = Person.create! :name=>"Willard"
      person.name = "Poe"
-     person.save_changes #only saves the changed fields (in this case name=>"Poe"
+     person.save_changes! #only saves the changed fields (in this case name=>"Poe"
 
-In addition to #save_changes, partial saves can be enabled globally:
+In addition to #save_changes(!), partial saves can be enabled globally:
 
      MmPartialUpdate.persistence_strategy = :changes_only
 
@@ -50,7 +54,7 @@ Or on a model by model basis:
        many :pets
      end
 
-When enabled globally, all calls to save or save! across all models will result in a partial update. When enabled on a particular model, calls to save or save! on instances of that model and any subclasses of that model will result in partial updates. 
+When enabled globally, all calls to #save or #save! across all models will simply delegate to #save_changes or #save_changes!, resulting in a partial update. When enabled on a particular model, calls to save or save! on instances of that model and any subclasses of that model will result in partial updates.
 
 == Known Issues & Limitations
 
