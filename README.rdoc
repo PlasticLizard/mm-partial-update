@@ -1,89 +1,62 @@
-= mm-dirtier
+= mm-partial-update
 
-mm-dirtier is a MongoMapper plugin that extends dirty tracking to the entire object graph. The default dirty tracking implementation in MongoMapper will only track dirty attributes for top level documents, and does not detect changes to hash or array keys. mm-dirtier, which currently only works with the Rails3 branch of MongoMapper, will record changes throughout your entire document hierarchy, including in place modifications to embedded array and hash keys.
+mm-partial-update is a MongoMapper plugin that enables a change-only persistence strategy for MongoMapper. mm-partial-update uses the enhanced dirty tracking provided by mm-dirtier to send only changes to MognoDB, rather than the entire document on each save. *note: mm-partial update requires the rails3 branch of MongoMapper. It will not work with the master branch, the one you get when you 'gem install mongo_mapper'
 
 == Installation
 
-mm-dirtier is available as a RubyGem:
+mm-partial-update is available as a RubyGem:
 
-     gem install mm_dirtier
+     gem install mm_partial_update
 
-To activate the plugin, add 'mm_dirtier' to your gemfile and
+To activate the plugin, add 'mm_partial_update' to your gemfile
 
-     include 'mm_dirtier'
-
-when your app is initialized. mm-dirtier will take care of plugging itself into MongoMapper::Document and MongoMapper::EmbeddedDocument.
+   gem 'mm_partial_update'
 
 == Usage
 
-mm-dirtier was created to serve a single purpose: to enable MongoMapper to automatically persist changes to documents via MongoDB's atomic opererators.
-Whether or not the deep dirty tracking mm-dirtier provides has any use beyond that, I have no idea. For that reason I will simply provide a basic sample of plugin usage in this readme. If anyone conceives of a use for this plugin beyond document persistence and wants to know more, add an issue to the tracker stating as much and I'll expand the documentation.
+mm-partial-update does not, by default, change MongoMappers normal mode of operation. Although mm-partial-update can be configured, either at a global level or on a model by model basis, to use a partial update strategy for all persistence operations, out of the box it simply adds a "save_changes" method to both MongoMapper::Document and MongoMapper::EmbeddedDocument, which will persist, using MongoDB's atomic operators, any changes to the target document or embedded document as well as any descendents of the target document or embedded document.
 
-=== Example:
+=== For example:
 
-     class Procedure
+     class Person
+       include MongoMapper::Document
+       key :name, String
+       many :pets
+     end
+
+     class Pet
        include MongoMapper::EmbeddedDocument
-
        key :name, String
      end
 
-     class Diagnosis
+     person = Person.create! :name=>"Willard"
+     person.name = "Poe"
+     person.save! #as always, overwrites the document in the database with the in memory copy
+
+     person = Person.create! :name=>"Willard"
+     person.name = "Poe"
+     person.save_changes #only saves the changed fields (in this case name=>"Poe"
+
+However, in addition to #save_changes, partial saves can be enabled globally:
+
+     MmPartialUpdate.persistence_strategy = :changes_only
+
+Or on a model by model basis:
+
+     class Person
        include MongoMapper::Document
-
+       persistence_strategy :changes_only
        key :name, String
+       many :pets
      end
 
-     class Patient
-       include MongoMapper::Document
+When enabled globally, all calls to save or save! will result in a partial update (with the exception of new documents). When enabled on a particular model, calls to save or save! on instances of that model and any subclasses of that model will result in partial updates. This is useful if you have a number of models but only one or two require partial saves for a particular use case, such as concurrent modification by more than one process.
 
-       key :name, String
-       key :nicknames, Array
-       key :address, Hash
+== Known Issues & Limitations
 
-       one  :procedure
-       many :procedures
-       many :diagnosis_ids, Array
-       many :diagnoses, :in => :diagnosis_ids
-     end
-
-     p = Patient.create :name=>"Nathan Stults"
-     p.changed? => false
-     p.nicknames << "Col. Easy Andy"
-     p.changed? => true
-     p.nicknames_changed? => true
-     p.nicknames_change => [[],["Col. Easy Andy"]]
-
-     p.address["city"] = "Santa Rosa"
-     p.address_changed? => true
-     p.address_change => [{},{"city"=>"Santa Rosa"}]
-
-     p.procedure.build :name => "Labotomy"
-     p.procedure_changed? => true
-     p.procedure_change => [nil,<Class ...>]
-     p.procedure.changed? => true
-     p.procedure.name_changed? => true
-
-     p.procedures.build(:name=>"Labotomy")
-     p.procedures_changed? => true
-     p.procedures_change? => [[],[<Class...]]
-     p.procedures[0].changed? => true
-     p.procedures[0].name_changed? => true
-     p.procedures[0].name_change => [nil,"Labotomy"]
-
-     #in_array associations are a little different than embedded associations
-     #because what is actually stored on the document is only the array of ids
-     #then that is what is tracked for changed.
-     p.diagnoses << Diagnosis.create(:name=>"Aspergers Syndrom")
-     p.diagnosis_ids_changed? => true
-     p.diagnosis_ids_change => [[],[BSON::ObjectId('...')]]
-
-     p.save
-
-     p.changed? => false
-     p.procedure.changed? => false
-     p.procedures[0].changed? => false
-
-
+* mm_partial_update will persist fully embedded documents on a change_only basis (i.e. issue $push, $pull and $set commands as appropriate). However, for the time being in_array_proxies behave like embedded Array keys, and persist as they always have in an all or nothing fashion. This will be changed in a future version.
+* mm_partial_update will detect and persist changes to embedded Array and Hash keys, but only at a single level of depth. This means that modifying an array or hash contained within your embedded array or hash key will not trigger the dirty tracking mechanism (i.e. my_doc.tags.meta["happy"] = 5 would not cause my_doc.tags to appear changed). This is a very solvable problem, and a fix will likely appear in a future version, particularly if someone needs it (I myself do not).
+* mm-partial-update does not (perhaps cannot?) behave in a truly atomic fashion. Because MongoDB appears to take a shotgun approach to detecting and preventing 'conflicting updates' in a single command, mm-partial-update breaks a single set of changes into multiple isolated commands to the database. Currently, the algorithm used is not very sophisticated, and results in a single update command for each unique embedded array that requires a push or a pull. In the future if this ends up presenting a performance problem, more sophisticated (but complicated) algorithms can be implemented to intelligently batch non-conflicting pushes and pulls together, resulting in a minimum of database calls. I'm holding off on that optimization until it proves necessary, however, mostly for maintainability reasons.
 
 == Note on Patches/Pull Requests
 
@@ -95,4 +68,4 @@ Whether or not the deep dirty tracking mm-dirtier provides has any use beyond th
 
 == Copyright
 
-Copyright (c) 1776 Nathan Stults. See LICENSE for details.
+Copyright (c) 2089 Nathan Stults. See LICENSE for details.
