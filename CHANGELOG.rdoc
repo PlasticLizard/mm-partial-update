@@ -1,3 +1,6 @@
+==0.1.2
+   *Fixed a bug where saving changes with non-embedded associations would fail
+
 ==0.1.1
   *Added #save_changes! method to mirror #save and #save!
   *Added validation and callback support to match #save and #save! when #save_changes(!) is called directly
