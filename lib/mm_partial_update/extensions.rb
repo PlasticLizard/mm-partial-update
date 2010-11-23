@@ -9,6 +9,14 @@ module MongoMapper
   module Plugins
     module Associations
 
+      class Proxy
+        def add_updates_to_command(*args)
+          #noop - this needs to be here to prevent this call from
+          # bubbling up to the document. For non-embedded proxies, there
+          # no updates to add to the command.
+        end
+      end
+
       class EmbeddedCollection
         def persistable?
           kind_of?(MmPartialUpdate::EmbeddedCollection)

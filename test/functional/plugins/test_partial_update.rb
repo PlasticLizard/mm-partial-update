@@ -157,7 +157,18 @@ class TestPartialUpdate < Test::Unit::TestCase
       pet.history.should == [:before_validation, :after_validation,
                              :before_save, :before_update, :after_update, :after_save]
     end
-
   end
+
+  context "Non-embedded associations" do
+    should 'be business as usual' do
+      p = Person.new :name=>"Willard"
+      p.happy_place = HappyPlace.new :description=>"A cool breeze rustles my hair as terradactyls glide gracefully overhead"
+      p.save!
+
+      p.reload
+      p.happy_place.should_not be_nil
+    end
+  end
+
 
 end

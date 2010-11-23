@@ -6,9 +6,15 @@ class Person
 
   key :name, String
   many :pets
+  one :happy_place
   one :favorite_pet, :class_name=>'Pet'
+end
 
-
+class HappyPlace #Test non-embedded proxies
+  include MongoMapper::Document
+  key :description, String
+  key :person_id, ObjectId
+  belongs_to :person
 end
 
 class ValidatedPerson < Person
