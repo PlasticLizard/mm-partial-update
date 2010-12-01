@@ -4,7 +4,6 @@ class Object
   end
 end
 
-
 module MongoMapper
   module Plugins
     module Associations

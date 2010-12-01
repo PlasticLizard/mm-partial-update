@@ -1,6 +1,8 @@
 require 'test_helper'
 require "models"
 
+Time.zone = "UTC"
+
 class TestPartialUpdate < Test::Unit::TestCase
   context "#save_changes" do
     should "create unsaved entities" do
@@ -163,12 +165,24 @@ class TestPartialUpdate < Test::Unit::TestCase
     should 'be business as usual' do
       p = Person.new :name=>"Willard"
       p.happy_place = HappyPlace.new :description=>"A cool breeze rustles my hair as terradactyls glide gracefully overhead"
-      p.save!
-
+      p.save_changes!
       p.reload
       p.happy_place.should_not be_nil
     end
   end
 
+  context "multiple save - load operations" do
+    should "be business as usual" do
+      hp = HappyPlace.create! :description=>"Hi there"
+      hp1 = HappyPlace.find(hp.id)
+      hp2 = HappyPlace.find(hp.id)
+      hp1.description = "ho"
+      hp2.description = "hi"
+      hp2.save!
+      hp1.save!
+      hp.reload
+      hp.description.should == "ho"
+    end
+  end
 
 end

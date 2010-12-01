@@ -55,7 +55,7 @@ module MmPartialUpdate
 
           add_create_self_to_command(selector, command) and return if new?
 
-          field_changes = changes
+          field_changes = persistable_changes
 
           associations.values.each do |association|
             proxy = get_proxy(association)
@@ -69,6 +69,19 @@ module MmPartialUpdate
             changes
           end
           command.tap {|c|c.set(selector,field_changes)}
+        end
+
+        #Since we are going to persist the values directly from
+        # the changes hash, we need to make sure they are
+        # propertly readied for storage
+        def persistable_changes
+          changes.tap do |persistable_changes|
+            persistable_changes.each_pair do |key_name, value|
+              if (key = keys[key_name])
+                value[-1] = key.set(value[-1])
+              end
+            end
+          end
         end
 
         private
