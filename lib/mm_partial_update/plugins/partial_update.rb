@@ -42,6 +42,12 @@ module MmPartialUpdate
           #assert_root_saved
           update_command  = prepare_update_command
           execute_command(update_command, options)
+          #callbacks and changes_only are not valid
+          # options for regular MongoMapper saves.
+          # clear_changes_to_subtree will pass this options
+          # hash to downstream saves, which can errors
+          # so they need to be removed
+          options.reject!{ |k,v|[:callbacks, :changes_only].include?(k)}
           clear_changes_to_subtree(options)
         end
 
