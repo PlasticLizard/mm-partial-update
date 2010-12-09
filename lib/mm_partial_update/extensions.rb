@@ -35,7 +35,12 @@ module MongoMapper
         def make_persistable
           class << self; include MmPartialUpdate::OneEmbeddedProxy; end unless persistable?
         end
+      end
 
+      class ManyDocumentsProxy
+        def save_to_collection(options={})
+          @target.each { |doc| doc.save_changes(options) if doc.changed? } if @target
+        end
       end
 
 

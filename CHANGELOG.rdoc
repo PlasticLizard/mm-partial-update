@@ -1,3 +1,6 @@
+== 0.1.5
+   *Call 'save_changes' when relations are persisted, to increase safety in concurrent situations
+
 ==0.1.4
    *Ensure invalid options aren't passed to regular MongoMapper save and save!
 
