@@ -64,10 +64,11 @@ module MmPartialUpdate
           field_changes = persistable_changes
 
           associations.values.each do |association|
-            proxy = get_proxy(association)
-            association_changes = field_changes.delete(association.name)
-            proxy.add_updates_to_command(association_changes, command) if
-              proxy.respond_to?(:add_updates_to_command)
+            if proxy = self.instance_variable_get(association.ivar)
+              association_changes = field_changes.delete(association.name)
+              proxy.add_updates_to_command(association_changes, command) if
+                proxy.respond_to?(:add_updates_to_command)
+            end
           end
 
           field_changes = field_changes.inject({}) do |changes,change|
@@ -106,23 +107,24 @@ module MmPartialUpdate
           @_new = false
           clear_changes
           associations.each do |_, association|
-            proxy = get_proxy(association)
-            proxy.save_to_collection(options) if
-              proxy.proxy_respond_to?(:save_to_collection)
+            if proxy = self.instance_variable_get(association.ivar)
+              proxy.save_to_collection(options) if
+                proxy.proxy_respond_to?(:save_to_collection)
+            end
           end
         end
 
         def execute_command(update_command,options)
-           if options[:callbacks]
-             context = new? ? :create : :update
-             run_callbacks(:save) do
+          if options[:callbacks]
+            context = new? ? :create : :update
+            run_callbacks(:save) do
               run_callbacks(context) do
                 update_command.execute()
               end
             end
           else
             update_command.execute()
-           end
+          end
         end
 
       end
