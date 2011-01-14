@@ -14,26 +14,40 @@ module MongoMapper
           # bubbling up to the document. For non-embedded proxies, there
           # no updates to add to the command.
         end
+        def persistable?
+          false
+        end
+        def can_be_persistable?
+          false
+        end
       end
 
       class EmbeddedCollection
+        def can_be_persistable?
+          true
+        end
         def persistable?
-          kind_of?(MmPartialUpdate::EmbeddedCollection)
+          @persistable
         end
 
         def make_persistable
           class << self; include MmPartialUpdate::EmbeddedCollection; end unless persistable?
+          @persistable = true
         end
 
       end
 
       class OneEmbeddedProxy
+        def can_be_persistable?
+          true
+        end
         def persistable?
-          kind_of?(MmPartialUpdate::OneEmbeddedProxy)
+          @persistable
         end
 
         def make_persistable
           class << self; include MmPartialUpdate::OneEmbeddedProxy; end unless persistable?
+          @persistable = true
         end
       end
 

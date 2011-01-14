@@ -1,3 +1,6 @@
+==0.1.7
+  *Fixed a memory leak
+
 == 0.1.6
   *Don't load proxies to check for changes unless they have previously been loaded by the entity.
    Fixes a big performance issue with saves.
