@@ -21,6 +21,14 @@ class TestPartialUpdate < Test::Unit::TestCase
       person.name.should == "Esteban"
     end
 
+    should "persist changes made during before_save" do
+      person = Person.create! :name=>"Willard!"
+      person.ensure_me = nil
+      person.save_changes
+      person.reload
+      person.ensure_me.should == "here i am!"
+    end
+
     should "update changes to a saved entity, preserving unchanged values" do
       person = Person.new :name=>"Willard"
       person.pets.build :name=>"Magma", :age=>2

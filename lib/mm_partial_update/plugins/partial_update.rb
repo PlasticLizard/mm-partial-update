@@ -40,8 +40,7 @@ module MmPartialUpdate
 
         def create_or_update_changes(options={})
           #assert_root_saved
-          update_command  = prepare_update_command
-          execute_command(update_command, options)
+          update_comment = execute_command(options)
           #callbacks and changes_only are not valid
           # options for regular MongoMapper saves.
           # clear_changes_to_subtree will pass this options
@@ -114,16 +113,19 @@ module MmPartialUpdate
           end
         end
 
-        def execute_command(update_command,options)
+        def execute_command(options)
           if options[:callbacks]
             context = new? ? :create : :update
             run_callbacks(:save) do
               run_callbacks(context) do
-                update_command.execute()
+                # the update command cannot be prepared before callbacks are run
+                # if they are to be run because they may change the state of the
+                # entity, and those changes need to be persisted
+                prepare_update_command.tap{ |c|c.execute() }
               end
             end
           else
-            update_command.execute()
+            prepare_update_command.tap{ |c|c.execute() }
           end
         end
 

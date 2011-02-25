@@ -1,3 +1,6 @@
+==0.1.8
+  *Fixed a bug that caused changes to an entity made in before_save to not persist in all cases
+
 ==0.1.7
   *Fixed a memory leak
 

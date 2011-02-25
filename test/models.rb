@@ -4,11 +4,17 @@ class Person
   include MongoMapper::Document
   include CallbacksSupport
   key :name, String
+  key :ensure_me, String
   many :pets
   one :happy_place
   one :favorite_pet, :class_name=>'Pet'
 
   timestamps!
+
+  before_save :do_the_needful
+  def do_the_needful
+    self.ensure_me ||= "here i am!"
+  end
 end
 
 class HappyPlace #Test non-embedded proxies
